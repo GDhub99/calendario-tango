@@ -1,0 +1,69 @@
+# Ogni giorno scarica l'agenda di faitango.it e pubblica il calendario su GitHub Pages.
+name: Aggiorna calendario
+
+on:
+  schedule:
+    - cron: '0 5 * * *'
+  workflow_dispatch:
+  push:
+    branches: [main]
+
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  scarica:
+    runs-on: windows-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Scarica gli eventi da faitango.it
+        if: github.event_name != 'push'
+        shell: powershell
+        run: powershell -NoProfile -ExecutionPolicy Bypass -File .\scrape-faitango.ps1 -Days 60 -OutDir .
+
+      - name: Salva i dati nel repository
+        if: github.event_name != 'push'
+        shell: powershell
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add events.json
+          git diff --cached --quiet
+          if ($LASTEXITCODE -ne 0) { git commit -m "Aggiorna eventi"; git push } else { Write-Host "Nessuna modifica" }
+          exit 0
+
+      - name: Prepara il sito
+        shell: powershell
+        run: |
+          New-Item -ItemType Directory -Force _site | Out-Null
+          Copy-Item index.html, events.json _site
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: sito
+          path: _site
+
+  pubblica:
+    needs: scarica
+    runs-on: ubuntu-latest
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: sito
+          path: _site
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: _site
+      - id: deployment
+        uses: actions/deploy-pages@v4
