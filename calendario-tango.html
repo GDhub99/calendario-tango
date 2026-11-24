@@ -1,0 +1,318 @@
+<title>Calendario Tango FAItango</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700&family=Inter:wght@400;500;600&display=swap">
+<style>
+/* Layout: colonna unica mobile-first — barra mese fissa in alto, griglia del mese, poi l'elenco del giorno scelto */
+:root{
+  --bg:#f7f5f6; --surface:#ffffff; --fg:#1f1a1d; --muted:#6f6469; --line:#e6e0e3;
+  --accent:#a3123a; --accent-soft:#f6dde4; --on-accent:#ffffff;
+  --heat:163,18,58;
+  --k-milonga:#a3123a; --k-pratica:#0f7a6c; --k-corso:#3b4cc0; --k-stage:#b06a00; --k-festival:#8a2c9e; --k-maratona:#8a2c9e; --k-other:#5b6470;
+  --display:"Bricolage Grotesque",ui-sans-serif,system-ui,sans-serif;
+  --body:"Inter",ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif;
+  --r:10px;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#151113; --surface:#1f1a1c; --fg:#f1eaed; --muted:#a69aa0; --line:#342c30;
+  --accent:#ff5f86; --accent-soft:#3d1a25; --on-accent:#1a0a10; --heat:255,95,134;
+  --k-milonga:#ff6b8f; --k-pratica:#3cc9b3; --k-corso:#8d9bff; --k-stage:#f0a43c; --k-festival:#d77ce8; --k-maratona:#d77ce8; --k-other:#9aa3ad;
+  color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#151113; --surface:#1f1a1c; --fg:#f1eaed; --muted:#a69aa0; --line:#342c30;
+  --accent:#ff5f86; --accent-soft:#3d1a25; --on-accent:#1a0a10; --heat:255,95,134;
+  --k-milonga:#ff6b8f; --k-pratica:#3cc9b3; --k-corso:#8d9bff; --k-stage:#f0a43c; --k-festival:#d77ce8; --k-maratona:#d77ce8; --k-other:#9aa3ad;
+  color-scheme:dark}
+
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--fg);font-family:var(--body);font-size:15px;line-height:1.45;-webkit-text-size-adjust:100%}
+body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset-top,0px);z-index:10;background:var(--surface)}
+.wrap{max-width:720px;margin:0 auto;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+button{font:inherit;color:inherit;cursor:pointer}
+button:focus-visible,input:focus-visible,a:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+
+header.top{position:sticky;top:env(safe-area-inset-top,0px);z-index:5;background:var(--surface);border-bottom:1px solid var(--line)}
+.top .wrap{display:flex;align-items:center;gap:8px;padding-block:10px}
+.brand{font-family:var(--display);font-weight:700;font-size:13px;letter-spacing:.06em;text-transform:uppercase;color:var(--accent);margin-right:auto}
+.month-nav{display:flex;align-items:center;gap:4px}
+.month-label{font-family:var(--display);font-weight:700;font-size:18px;min-width:8.5em;text-align:center;text-transform:capitalize;white-space:nowrap}
+@media (max-width:420px){.brand{display:none}.top .wrap{justify-content:space-between}}
+.icon-btn{width:38px;height:38px;border-radius:50%;border:1px solid var(--line);background:var(--surface);display:grid;place-items:center;font-size:18px;line-height:1}
+.icon-btn:disabled{opacity:.35;cursor:default}
+.today-btn{border:1px solid var(--line);background:var(--surface);border-radius:999px;padding:6px 12px;font-size:13px;font-weight:600}
+
+.filters{display:flex;flex-direction:column;gap:10px;padding-block:14px 6px}
+.search{width:100%;font:inherit;padding:10px 12px;border-radius:var(--r);border:1px solid var(--line);background:var(--surface);color:var(--fg)}
+.search::placeholder{color:var(--muted)}
+.chips{display:flex;gap:6px;overflow-x:auto;scrollbar-width:none;margin-inline:calc(-1 * max(16px,env(safe-area-inset-left,0px)));padding-inline:max(16px,env(safe-area-inset-left,0px));padding-block:2px}
+.chips::-webkit-scrollbar{display:none}
+.chip{flex:none;white-space:nowrap;display:inline-flex;align-items:center;gap:6px;border:1px solid var(--line);background:var(--surface);border-radius:999px;padding:5px 11px;font-size:13px;font-weight:500}
+.chip .dot{width:8px;height:8px;border-radius:50%;background:var(--kc,var(--k-other))}
+.chip[aria-pressed="true"]{background:var(--fg);color:var(--bg);border-color:var(--fg)}
+.chip.aff[aria-pressed="true"]{background:var(--accent);border-color:var(--accent);color:var(--on-accent)}
+.chip.city{font-weight:600}
+.chip.city .n{font-size:11px;font-weight:500;opacity:.7;font-variant-numeric:tabular-nums}
+
+.cal{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:8px;margin-block:8px 18px}
+.dow,.grid{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:4px}
+.dow span{font-size:11px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);text-align:center;padding-block:4px 6px}
+.day{position:relative;aspect-ratio:1/1.05;border:0;border-radius:9px;background:rgba(var(--heat),var(--h,0));display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1px;padding:0;min-width:0}
+.day .n{font-weight:600;font-size:15px;font-variant-numeric:tabular-nums}
+.day .c{font-size:11px;color:var(--muted);font-variant-numeric:tabular-nums}
+.day.hot .n,.day.hot .c{color:var(--on-accent)}
+.day.empty{visibility:hidden}
+.day.off{opacity:.35;cursor:default}
+.day.today::after{content:"";position:absolute;bottom:5px;width:14px;height:2px;border-radius:2px;background:var(--fg)}
+.day.hot.today::after{background:var(--on-accent)}
+.day[aria-pressed="true"]{outline:2px solid var(--fg);outline-offset:-2px}
+.legend{display:flex;justify-content:space-between;font-size:12px;color:var(--muted);padding:8px 4px 2px}
+
+.list-head{display:flex;align-items:baseline;justify-content:space-between;gap:12px;flex-wrap:wrap;padding-block:4px 10px;scroll-margin-top:calc(env(safe-area-inset-top,0px) + 70px)}
+.list-head h2{font-family:var(--display);font-weight:700;font-size:24px;margin:0;text-wrap:balance}
+.list-head h2::first-letter{text-transform:uppercase}
+.list-head .count{color:var(--muted);font-size:13px}
+.events{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:8px}
+.ev{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:12px 14px;display:grid;gap:4px;min-width:0}
+.ev .meta{display:flex;align-items:center;gap:8px;flex-wrap:wrap;font-size:12px;font-weight:600;letter-spacing:.04em;text-transform:uppercase;color:var(--kc,var(--k-other))}
+.ev .meta .dot{width:8px;height:8px;border-radius:50%;background:var(--kc,var(--k-other))}
+.ev .meta .badge{color:var(--accent);background:var(--accent-soft);padding:1px 7px;border-radius:999px;letter-spacing:.02em;text-transform:none;font-weight:600}
+.ev h3{margin:0;font-size:16px;font-weight:600;line-height:1.3;overflow-wrap:anywhere}
+.ev h3 a{color:inherit;text-decoration:none}
+.ev .where{color:var(--fg);font-size:14px;overflow-wrap:anywhere}
+.ev .org{color:var(--muted);font-size:13px;overflow-wrap:anywhere}
+.ev .actions{display:flex;gap:14px;margin-top:4px;font-size:13px;font-weight:600}
+.ev .actions a{color:var(--accent);text-decoration:none}
+.empty-state{background:var(--surface);border:1px dashed var(--line);border-radius:var(--r);padding:22px;text-align:center;color:var(--muted)}
+.more{display:block;width:100%;margin-top:10px;border:1px solid var(--line);background:var(--surface);border-radius:var(--r);padding:11px;font-weight:600}
+footer{color:var(--muted);font-size:12px;padding-block:24px 32px;text-align:center}
+footer a{color:inherit}
+@media (prefers-reduced-motion: reduce){html{scroll-behavior:auto}}
+</style>
+
+<header class="top">
+  <div class="wrap">
+    <span class="brand">Tango</span>
+    <div class="month-nav">
+      <button class="icon-btn" id="prev" aria-label="Mese precedente">‹</button>
+      <span class="month-label" id="monthLabel">—</span>
+      <button class="icon-btn" id="next" aria-label="Mese successivo">›</button>
+    </div>
+    <button class="today-btn" id="todayBtn">Oggi</button>
+  </div>
+</header>
+
+<main class="wrap">
+  <section class="filters" aria-label="Filtri">
+    <input class="search" id="q" type="search" placeholder="Cerca città, evento o associazione" autocomplete="off" enterkeyhint="search">
+    <div class="chips" id="cities" role="group" aria-label="Province"></div>
+    <div class="chips" id="chips"></div>
+  </section>
+
+  <section class="cal" aria-label="Calendario">
+    <div class="dow"><span>Lun</span><span>Mar</span><span>Mer</span><span>Gio</span><span>Ven</span><span>Sab</span><span>Dom</span></div>
+    <div class="grid" id="grid"></div>
+    <div class="legend"><span>Il numero indica gli eventi del giorno</span><span id="monthTotal"></span></div>
+  </section>
+
+  <section aria-live="polite">
+    <div class="list-head" id="listHead">
+      <h2 id="dayTitle">Caricamento eventi…</h2>
+      <span class="count" id="dayCount"></span>
+    </div>
+    <ul class="events" id="events"></ul>
+    <button class="more" id="more" hidden>Mostra altri</button>
+  </section>
+</main>
+
+<footer class="wrap" id="footer">Dati da <a href="https://www.faitango.it/agenda-eventi" target="_blank" rel="noopener">faitango.it/agenda-eventi</a></footer>
+
+<script>
+(function(){
+  const KINDS = {milonga:'Milonga', pratica:'Pratica', corso:'Corso', stage:'Stage', festival:'Festival', maratona:'Maratona'};
+  const kindVar = k => KINDS[k] ? `var(--k-${k})` : 'var(--k-other)';
+  const $ = id => document.getElementById(id);
+  const pad = n => String(n).padStart(2,'0');
+  const iso = d => `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;
+  const fold = s => (s||'').normalize('NFD').replace(/[̀-ͯ]/g,'').toLowerCase();
+  const PAGE = 40;
+  // Province rapide: il campo "c" degli eventi è "Provincia, Comune" (es. "Modena, Carpi")
+  const CITIES = ['Modena', 'Reggio Emilia', 'Bologna'];
+  const provOf = ev => (ev.c||'').split(',')[0].trim();
+
+  const store = {
+    get(){ try{ return JSON.parse(localStorage.getItem('ft-filters')||'{}'); }catch(e){ return {}; } },
+    set(v){ try{ localStorage.setItem('ft-filters', JSON.stringify(v)); }catch(e){} }
+  };
+  const saved = store.get();
+  const state = {
+    data:null, kinds:new Set(saved.kinds||[]), cities:new Set((saved.cities||[]).filter(c => CITIES.includes(c))), aff:!!saved.aff, q:saved.q||'',
+    y:0, m:0, sel:null, shown:PAGE
+  };
+  $('q').value = state.q;
+
+  function persist(){ store.set({kinds:[...state.kinds], cities:[...state.cities], aff:state.aff, q:state.q}); }
+
+  function matches(ev){
+    if (state.cities.size && !state.cities.has(provOf(ev))) return false;
+    if (state.kinds.size && !state.kinds.has(ev.k)) return false;
+    if (state.aff && !ev.f) return false;
+    if (state.q){
+      const hay = ev._s || (ev._s = fold(`${ev.t} ${ev.c} ${ev.o} ${ev.kl}`));
+      for (const w of fold(state.q).split(/\s+/).filter(Boolean)) if (!hay.includes(w)) return false;
+    }
+    return true;
+  }
+  const dayEvents = key => (state.data.days[key]||[]).filter(matches);
+
+  function renderCities(){
+    const counts = {};
+    for (const list of Object.values(state.data.days)) for (const e of list) { const p = provOf(e); if (CITIES.includes(p)) counts[p] = (counts[p]||0)+1; }
+    const box = $('cities'); box.textContent = '';
+    const all = document.createElement('button');
+    all.className = 'chip city'; all.type = 'button';
+    all.setAttribute('aria-pressed', state.cities.size === 0);
+    all.textContent = 'Tutte le province';
+    all.onclick = () => { state.cities.clear(); persist(); renderCities(); refresh(); };
+    box.append(all);
+    for (const c of CITIES){
+      const b = document.createElement('button');
+      b.className = 'chip city'; b.type = 'button';
+      b.setAttribute('aria-pressed', state.cities.has(c));
+      b.title = `Eventi in provincia di ${c}`;
+      b.append(c);
+      const n = document.createElement('span'); n.className = 'n'; n.textContent = counts[c]||0; b.append(n);
+      b.onclick = () => { state.cities.has(c) ? state.cities.delete(c) : state.cities.add(c); persist(); renderCities(); refresh(); };
+      box.append(b);
+    }
+  }
+
+  function renderChips(){
+    const present = new Map(), labels = {};
+    for (const list of Object.values(state.data.days)) for (const e of list) { present.set(e.k, (present.get(e.k)||0)+1); labels[e.k] = e.kl; }
+    const order = [...present.keys()].sort((a,b) => present.get(b) - present.get(a));
+    const box = $('chips'); box.textContent = '';
+    for (const k of order){
+      const b = document.createElement('button');
+      b.className = 'chip'; b.type = 'button';
+      b.style.setProperty('--kc', kindVar(k));
+      b.setAttribute('aria-pressed', state.kinds.has(k));
+      b.innerHTML = '<span class="dot"></span>';
+      b.append(labels[k] || KINDS[k] || k);
+      b.onclick = () => { state.kinds.has(k) ? state.kinds.delete(k) : state.kinds.add(k); persist(); renderChips(); refresh(); };
+      box.append(b);
+    }
+    const a = document.createElement('button');
+    a.className = 'chip aff'; a.type = 'button';
+    a.setAttribute('aria-pressed', state.aff);
+    a.textContent = '★ Solo affiliati';
+    a.onclick = () => { state.aff = !state.aff; persist(); renderChips(); refresh(); };
+    box.prepend(a);
+  }
+
+  function renderMonth(){
+    const {y, m} = state;
+    const first = new Date(y, m, 1);
+    $('monthLabel').textContent = first.toLocaleDateString('it-IT', {month:'long', year:'numeric'});
+    const minM = state.data.from.slice(0,7), maxM = state.data.to.slice(0,7);
+    const cur = `${y}-${pad(m+1)}`;
+    $('prev').disabled = cur <= minM; $('next').disabled = cur >= maxM;
+
+    const grid = $('grid'); grid.textContent = '';
+    const lead = (first.getDay()+6)%7;
+    for (let i=0;i<lead;i++){ const s=document.createElement('div'); s.className='day empty'; grid.append(s); }
+    const days = new Date(y, m+1, 0).getDate();
+    const counts = [];
+    for (let d=1; d<=days; d++){ const k=`${y}-${pad(m+1)}-${pad(d)}`; counts.push([k, k>=state.data.from && k<=state.data.to ? dayEvents(k).length : null]); }
+    const max = Math.max(1, ...counts.map(c=>c[1]||0));
+    const today = iso(new Date());
+    let total = 0;
+    counts.forEach(([k,c], i) => {
+      const b = document.createElement('button');
+      b.type = 'button'; b.className = 'day';
+      const inRange = c !== null;
+      if (!inRange) { b.classList.add('off'); b.disabled = true; }
+      if (k === today) b.classList.add('today');
+      const h = inRange && c ? 0.12 + 0.88*(c/max) : 0;
+      b.style.setProperty('--h', h.toFixed(2));
+      if (h > 0.55) b.classList.add('hot');
+      b.setAttribute('aria-pressed', k === state.sel);
+      b.innerHTML = `<span class="n">${i+1}</span><span class="c">${inRange ? c : ''}</span>`;
+      b.setAttribute('aria-label', `${i+1}: ${inRange ? c+' eventi' : 'fuori dal periodo scaricato'}`);
+      if (inRange) { total += c; b.onclick = () => { state.sel = k; state.shown = PAGE; renderMonth(); renderList(); $('listHead').scrollIntoView({behavior:'smooth', block:'start'}); }; }
+      grid.append(b);
+    });
+    $('monthTotal').textContent = `${total} nel mese`;
+  }
+
+  function renderList(){
+    const ul = $('events'); ul.textContent = '';
+    const k = state.sel;
+    const d = new Date(k+'T12:00:00');
+    $('dayTitle').textContent = d.toLocaleDateString('it-IT', {weekday:'long', day:'numeric', month:'long'});
+    const list = dayEvents(k);
+    $('dayCount').textContent = list.length === 1 ? '1 evento' : `${list.length} eventi`;
+    if (!list.length){
+      const li = document.createElement('li'); li.className='empty-state';
+      li.textContent = (state.q || state.kinds.size || state.cities.size || state.aff) ? 'Nessun evento con questi filtri. Prova a toglierne qualcuno.' : 'Nessun evento in agenda per questo giorno.';
+      ul.append(li);
+    }
+    for (const e of list.slice(0, state.shown)){
+      const li = document.createElement('li'); li.className='ev';
+      li.style.setProperty('--kc', kindVar(e.k));
+      const meta = document.createElement('div'); meta.className='meta';
+      meta.innerHTML = '<span class="dot"></span>';
+      meta.append(e.kl || 'Evento');
+      if (e.f){ const s=document.createElement('span'); s.className='badge'; s.textContent='★ affiliata'; meta.append(s); }
+      const h = document.createElement('h3'); const a = document.createElement('a');
+      a.href = e.u; a.target = '_blank'; a.rel = 'noopener'; a.textContent = e.t; h.append(a);
+      const w = document.createElement('div'); w.className='where'; w.textContent = e.c;
+      li.append(meta, h, w);
+      if (e.o){ const o=document.createElement('div'); o.className='org'; o.textContent = e.o; li.append(o); }
+      const act = document.createElement('div'); act.className='actions';
+      const s1 = document.createElement('a'); s1.href=e.u; s1.target='_blank'; s1.rel='noopener'; s1.textContent='Scheda evento ↗'; act.append(s1);
+      if (e.g){ const s2=document.createElement('a'); s2.href=`https://www.google.com/maps/search/?api=1&query=${e.g[0]},${e.g[1]}`; s2.target='_blank'; s2.rel='noopener'; s2.textContent='Mappa ↗'; act.append(s2); }
+      li.append(act);
+      ul.append(li);
+    }
+    const more = $('more');
+    more.hidden = list.length <= state.shown;
+    more.textContent = `Mostra altri ${Math.min(PAGE, list.length - state.shown)}`;
+  }
+
+  function refresh(){ state.shown = PAGE; renderMonth(); renderList(); }
+
+  function go(delta){
+    const d = new Date(state.y, state.m + delta, 1);
+    state.y = d.getFullYear(); state.m = d.getMonth();
+    const firstKey = `${state.y}-${pad(state.m+1)}-01`;
+    state.sel = firstKey < state.data.from ? state.data.from : firstKey;
+    refresh();
+  }
+
+  $('prev').onclick = () => go(-1);
+  $('next').onclick = () => go(1);
+  $('todayBtn').onclick = () => {
+    const t = iso(new Date());
+    const k = t < state.data.from ? state.data.from : (t > state.data.to ? state.data.to : t);
+    const d = new Date(k+'T12:00:00'); state.y=d.getFullYear(); state.m=d.getMonth(); state.sel=k; refresh();
+  };
+  $('more').onclick = () => { state.shown += PAGE; renderList(); };
+  let qt; $('q').addEventListener('input', e => { clearTimeout(qt); qt = setTimeout(() => { state.q = e.target.value.trim(); persist(); refresh(); }, 180); });
+
+  fetch('events.json', {cache:'no-cache'}).then(r => { if(!r.ok) throw new Error(r.status); return r.json(); }).then(data => {
+    state.data = data;
+    renderCities();
+    renderChips();
+    $('todayBtn').click();
+    const up = new Date(data.updated);
+    const f = $('footer');
+    f.textContent = '';
+    f.append(`${data.count} eventi dal ${new Date(data.from+'T12:00:00').toLocaleDateString('it-IT')} al ${new Date(data.to+'T12:00:00').toLocaleDateString('it-IT')} · aggiornati il ${up.toLocaleDateString('it-IT')} alle ${up.toLocaleTimeString('it-IT',{hour:'2-digit',minute:'2-digit'})} · Fonte: `);
+    const a = document.createElement('a'); a.href='https://www.faitango.it/agenda-eventi'; a.target='_blank'; a.rel='noopener'; a.textContent='faitango.it'; f.append(a);
+  }).catch(() => {
+    $('dayTitle').textContent = 'Impossibile caricare gli eventi';
+    $('events').innerHTML = '<li class="empty-state">Il file dei dati non è disponibile. Ricarica la pagina tra qualche istante.</li>';
+  });
+})();
+</script>
