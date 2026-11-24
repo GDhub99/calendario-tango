@@ -1,12 +1,11 @@
-# Ogni giorno scarica l'agenda di faitango.it e pubblica il calendario su GitHub Pages.
 name: Aggiorna calendario
 
 on:
   schedule:
-    - cron: '0 5 * * *'
-  workflow_dispatch:
+    - cron: '0 5 * * *'   # ogni giorno alle 05:00 UTC (06:00 in inverno, 07:00 in estate)
+  workflow_dispatch:       # avvio manuale da Actions > Aggiorna calendario > Run workflow
   push:
-    branches: [main]
+    branches: [main]       # a ogni modifica dei file ripubblica il sito (senza riscaricare i dati)
 
 concurrency:
   group: pages
@@ -23,24 +22,39 @@ jobs:
       - name: Scarica gli eventi da faitango.it
         if: github.event_name != 'push'
         shell: powershell
-        run: powershell -NoProfile -ExecutionPolicy Bypass -File .\scrape-faitango.ps1 -Days 60 -OutDir .
+        run: |
+          $log = & .\scrape-faitango.ps1 -Days 60 -OutDir . *>&1 | Out-String
+          Write-Output $log
+          $m = [regex]::Match($log, 'Eventi: (\d+) \(dichiarati dal sito: (\d*)\)')
+          if (-not $m.Success) { Write-Output "::error::Riga 'Eventi: N (dichiarati dal sito: M)' non trovata"; exit 1 }
+          $n = [int]$m.Groups[1].Value
+          $tot = $m.Groups[2].Value
+          if ($n -le 100 -or "$n" -ne $tot) {
+            Write-Output "::error::Controllo fallito: $n eventi scaricati, $tot dichiarati dal sito. Dati NON pubblicati."
+            git checkout -- events.json
+            exit 1
+          }
+          Write-Output "OK: $n eventi"
 
       - name: Salva i dati nel repository
         if: github.event_name != 'push'
-        shell: powershell
+        shell: bash
         run: |
           git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git config user.email "41898333+github-actions[bot]@users.noreply.github.com"
           git add events.json
-          git diff --cached --quiet
-          if ($LASTEXITCODE -ne 0) { git commit -m "Aggiorna eventi"; git push } else { Write-Host "Nessuna modifica" }
-          exit 0
+          if git diff --cached --quiet; then
+            echo "Nessuna modifica ai dati"
+          else
+            git commit -m "Aggiorna eventi"
+            git push
+          fi
 
       - name: Prepara il sito
-        shell: powershell
+        shell: bash
         run: |
-          New-Item -ItemType Directory -Force _site | Out-Null
-          Copy-Item index.html, events.json _site
+          mkdir _site
+          cp index.html events.json _site/
 
       - uses: actions/upload-artifact@v4
         with:
@@ -55,7 +69,7 @@ jobs:
       id-token: write
     environment:
       name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
+      url: ${{ steps.deploy.outputs.page_url }}
     steps:
       - uses: actions/download-artifact@v4
         with:
@@ -65,5 +79,5 @@ jobs:
       - uses: actions/upload-pages-artifact@v3
         with:
           path: _site
-      - id: deployment
+      - id: deploy
         uses: actions/deploy-pages@v4
